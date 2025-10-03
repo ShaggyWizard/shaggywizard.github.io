@@ -7,20 +7,10 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   </head>
   <body class="bg-gray-100 text-gray-900">
-    <!-- Sticky график -->
+    <!-- Sticky блок: настройки + график -->
     <div class="sticky top-0 z-50 bg-white shadow">
-      <div class="max-w-7xl mx-auto px-4 py-3">
-        <div class="h-[300px]">
-          <canvas id="topChart"></canvas>
-        </div>
-      </div>
-    </div>
-
-    <!-- Контент -->
-    <div class="max-w-7xl mx-auto p-6 space-y-6">
-      <!-- Диапазон -->
-      <div class="bg-white shadow rounded p-6">
-        <h2 class="text-xl font-semibold mb-4">Диапазон для баланса</h2>
+      <div class="max-w-7xl mx-auto px-4 py-3 space-y-4">
+        <!-- Панель управления -->
         <div class="flex flex-wrap items-center gap-2">
           <input type="date" id="rangeStart" class="border rounded p-2" />
           <input type="date" id="rangeEnd" class="border rounded p-2" />
@@ -59,9 +49,22 @@
           >
             Показать
           </button>
+          <button
+            class="px-3 py-1 bg-purple-600 text-white rounded"
+            onclick="exportCurrent()"
+          >
+            Экспорт
+          </button>
+        </div>
+        <!-- График -->
+        <div class="h-[300px]">
+          <canvas id="topChart"></canvas>
         </div>
       </div>
+    </div>
 
+    <!-- Контент -->
+    <div class="max-w-7xl mx-auto p-6 space-y-6">
       <!-- Факт -->
       <div class="bg-white shadow rounded p-6">
         <h2 class="text-xl font-semibold mb-4">Фактические операции</h2>
@@ -126,7 +129,6 @@
             required
             step="0.01"
           />
-
           <select id="planType" class="border rounded p-2 w-full">
             <option value="income">Доход</option>
             <option value="expense">Расход</option>
@@ -184,19 +186,29 @@
       }
 
       function toISO(d) {
-        return new Date(d.getFullYear(), d.getMonth(), d.getDate())
-          .toISOString()
-          .slice(0, 10);
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        const dd = String(d.getDate()).padStart(2, "0");
+        return `${y}-${m}-${dd}`;
       }
+      const TODAY = toISO(new Date());
+      document.addEventListener("DOMContentLoaded", () => {
+        document.getElementById("factDate").setAttribute("max", TODAY);
+      });
 
       /* Факт */
       factForm.onsubmit = (e) => {
         e.preventDefault();
-        const dateVal = factDate.value || toISO(new Date());
+        const chosen = factDate.value;
+        const dateVal = chosen ? chosen : TODAY;
+        if (chosen && chosen > TODAY) {
+          alert("Нельзя будущую дату.");
+          return;
+        }
         data.fact.push({
           date: dateVal,
           desc: factDesc.value,
-          amount: +factAmount.value,
+          amount: parseFloat(factAmount.value).toFixed(2) * 1,
           type: factType.value,
         });
         saveData();
@@ -209,7 +221,7 @@
         data.plan.push({
           date: planDate.value,
           desc: planDesc.value,
-          amount: +planAmount.value,
+          amount: parseFloat(planAmount.value).toFixed(2) * 1,
           type: planType.value,
           repeat: planRepeat.value,
           start: planStart.value || null,
@@ -223,20 +235,24 @@
 
       function confirmPlanOp(index) {
         const op = data.plan[index];
-        let factDate = prompt("Дата факта (YYYY-MM-DD):", toISO(new Date()));
-        if (!factDate) return;
-        const factAmount = parseFloat(prompt("Сумма:", op.amount));
-        if (isNaN(factAmount)) return;
+        let fdate = prompt("Дата факта (YYYY-MM-DD):", TODAY);
+        if (!fdate) return;
+        if (fdate > TODAY) {
+          alert("Нельзя будущую дату.");
+          return;
+        }
+        const famount = parseFloat(prompt("Сумма:", op.amount));
+        if (isNaN(famount)) return;
         data.fact.push({
-          date: factDate,
+          date: fdate,
           desc: op.desc,
-          amount: factAmount,
+          amount: famount,
           type: op.type,
         });
         if (op.repeat === "once") {
           op.confirmed = true;
         } else {
-          const ym = factDate.slice(0, 7);
+          const ym = fdate.slice(0, 7);
           if (!op.confirmedMonths) op.confirmedMonths = [];
           if (!op.confirmedMonths.includes(ym)) op.confirmedMonths.push(ym);
         }
@@ -255,12 +271,44 @@
           end.getDate()
         );
         const endISO = toISO(endDate);
+        const todayISO = TODAY;
         const labels = [],
           actual = [],
           future = [];
         let balFact = 0,
           balPlan = 0,
           idx = 0;
+
+        // стартовый баланс
+        data.fact.forEach((op) => {
+          if (op.date < toISO(startDate) && op.date <= todayISO) {
+            balFact += op.type === "income" ? op.amount : -op.amount;
+          }
+        });
+        data.plan.forEach((op) => {
+          if (op.repeat === "once") {
+            if (op.date < toISO(startDate) && !op.confirmed) {
+              balPlan += op.type === "income" ? op.amount : -op.amount;
+            }
+          }
+          if (op.repeat === "regular") {
+            const dayNum = parseInt(op.date.slice(8, 10), 10);
+            for (
+              let d = new Date(op.start || startDate);
+              d < startDate && (!op.end || d <= new Date(op.end));
+              d.setMonth(d.getMonth() + 1)
+            ) {
+              const ds = toISO(new Date(d.getFullYear(), d.getMonth(), dayNum));
+              const ym = ds.slice(0, 7);
+              if (
+                ds < toISO(startDate) &&
+                (!op.confirmedMonths || !op.confirmedMonths.includes(ym))
+              ) {
+                balPlan += op.type === "income" ? op.amount : -op.amount;
+              }
+            }
+          }
+        });
 
         const isWeekBoundary = () => idx % 7 === 6;
         const isMonthBoundary = (cur) => {
@@ -277,8 +325,9 @@
           const ds = toISO(cur);
           let deltaFact = 0;
           data.fact.forEach((op) => {
-            if (op.date === ds)
+            if (op.date === ds && op.date <= todayISO) {
               deltaFact += op.type === "income" ? op.amount : -op.amount;
+            }
           });
           balFact += deltaFact;
 
@@ -324,13 +373,13 @@
         data.fact.forEach((op, i) => {
           const sign = op.type === "income" ? "+" : "−";
           const cls = op.type === "income" ? "text-green-600" : "text-red-600";
-          factTable.innerHTML += `
-      <tr>
-        <td class="p-2">${op.date}</td>
-        <td class="p-2">${op.desc}</td>
-        <td class="p-2 ${cls}">${sign}${op.amount}</td>
-        <td><button class="text-red-600" onclick="data.fact.splice(${i},1);saveData()">✕</button></td>
-      </tr>`;
+          factTable.innerHTML += `<tr><td class="p-2">${
+            op.date
+          }</td><td class="p-2">${
+            op.desc
+          }</td><td class="p-2 ${cls}">${sign}${op.amount.toFixed(
+            2
+          )}</td><td><button class="text-red-600" onclick="data.fact.splice(${i},1);saveData()">✕</button></td></tr>`;
         });
 
         planTable.innerHTML = "";
@@ -342,19 +391,14 @@
           const confirmedTxt = op.repeat === "once" && op.confirmed ? "✓" : "";
           const sign = op.type === "income" ? "+" : "−";
           const cls = op.type === "income" ? "text-green-600" : "text-red-600";
-          planTable.innerHTML += `
-      <tr>
-        <td class="p-2">${when}</td>
-        <td class="p-2">${op.desc}</td>
-        <td class="p-2 ${cls}">${sign}${op.amount}</td>
-        <td class="p-2 flex gap-2">
-          ${
+          planTable.innerHTML += `<tr><td class="p-2">${when}</td><td class="p-2">${
+            op.desc
+          }</td><td class="p-2 ${cls}">${sign}${op.amount.toFixed(
+            2
+          )}</td><td class="p-2 flex gap-2">${
             confirmedTxt ||
             `<button class="text-green-600" onclick="confirmPlanOp(${i})">Подтвердить</button>`
-          }
-          <button class="text-red-600" onclick="data.plan.splice(${i},1);saveData()">Удалить</button>
-        </td>
-      </tr>`;
+          }<button class="text-red-600" onclick="data.plan.splice(${i},1);saveData()">Удалить</button></td></tr>`;
         });
       }
 
@@ -394,6 +438,105 @@
         if (type === "year") end.setFullYear(d.getFullYear() + 1);
         rangeStart.value = toISO(start);
         rangeEnd.value = toISO(end);
+      }
+
+      function exportCurrent() {
+        const start = new Date(rangeStart.value || new Date());
+        const end = new Date(rangeEnd.value || new Date());
+        const todayISO = TODAY;
+        const rows = [];
+        let balFact = 0,
+          balPlan = 0;
+
+        // стартовый баланс
+        data.fact.forEach((op) => {
+          if (op.date < toISO(start) && op.date <= todayISO) {
+            balFact += op.type === "income" ? op.amount : -op.amount;
+          }
+        });
+        data.plan.forEach((op) => {
+          if (op.repeat === "once") {
+            if (op.date < toISO(start) && !op.confirmed) {
+              balPlan += op.type === "income" ? op.amount : -op.amount;
+            }
+          }
+          if (op.repeat === "regular") {
+            const dayNum = parseInt(op.date.slice(8, 10), 10);
+            for (
+              let d = new Date(op.start || start);
+              d < start && (!op.end || d <= new Date(op.end));
+              d.setMonth(d.getMonth() + 1)
+            ) {
+              const ds = toISO(new Date(d.getFullYear(), d.getMonth(), dayNum));
+              const ym = ds.slice(0, 7);
+              if (
+                ds < toISO(start) &&
+                (!op.confirmedMonths || !op.confirmedMonths.includes(ym))
+              ) {
+                balPlan += op.type === "income" ? op.amount : -op.amount;
+              }
+            }
+          }
+        });
+
+        for (
+          let cur = new Date(start);
+          cur <= end;
+          cur.setDate(cur.getDate() + 1)
+        ) {
+          const ds = toISO(cur);
+          const opsFact = [],
+            opsPlan = [];
+          data.fact.forEach((op) => {
+            if (op.date === ds && op.date <= todayISO) {
+              const delta = op.type === "income" ? op.amount : -op.amount;
+              balFact += delta;
+              opsFact.push({ type: op.type, desc: op.desc, amount: op.amount });
+            }
+          });
+          data.plan.forEach((op) => {
+            if (op.repeat === "once" && op.date === ds && !op.confirmed) {
+              const delta = op.type === "income" ? op.amount : -op.amount;
+              balPlan += delta;
+              opsPlan.push({ type: op.type, desc: op.desc, amount: op.amount });
+            }
+            if (op.repeat === "regular") {
+              const dayNum = parseInt(op.date.slice(8, 10), 10);
+              const inRange =
+                (!op.start || ds >= op.start) && (!op.end || ds <= op.end);
+              const confirmedMonths = op.confirmedMonths || [];
+              const ym = ds.slice(0, 7);
+              if (
+                inRange &&
+                cur.getDate() === dayNum &&
+                !confirmedMonths.includes(ym)
+              ) {
+                const delta = op.type === "income" ? op.amount : -op.amount;
+                balPlan += delta;
+                opsPlan.push({
+                  type: op.type,
+                  desc: op.desc,
+                  amount: op.amount,
+                });
+              }
+            }
+          });
+          rows.push({
+            date: ds,
+            balance_fact: balFact,
+            balance_future: balFact + balPlan,
+            operations: { fact: opsFact, plan: opsPlan },
+          });
+        }
+        const blob = new Blob([JSON.stringify(rows, null, 2)], {
+          type: "application/json",
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "budget_export.json";
+        a.click();
+        URL.revokeObjectURL(url);
       }
 
       function renderAll() {
