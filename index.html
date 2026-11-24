@@ -1,550 +1,154 @@
-<!DOCTYPE html>
-<html lang="ru">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Планировщик бюджета</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  </head>
-  <body class="bg-gray-100 text-gray-900">
-    <!-- Sticky блок: настройки + график -->
-    <div class="sticky top-0 z-50 bg-white shadow">
-      <div class="max-w-7xl mx-auto px-4 py-3 space-y-4">
-        <!-- Панель управления -->
-        <div class="flex flex-wrap items-center gap-2">
-          <input type="date" id="rangeStart" class="border rounded p-2" />
-          <input type="date" id="rangeEnd" class="border rounded p-2" />
-          <button
-            class="px-3 py-1 bg-gray-200 rounded"
-            onclick="setRange('week')"
-          >
-            Неделя
-          </button>
-          <button
-            class="px-3 py-1 bg-gray-200 rounded"
-            onclick="setRange('month')"
-          >
-            Месяц
-          </button>
-          <button
-            class="px-3 py-1 bg-gray-200 rounded"
-            onclick="setRange('3m')"
-          >
-            3 мес
-          </button>
-          <button
-            class="px-3 py-1 bg-gray-200 rounded"
-            onclick="setRange('year')"
-          >
-            Год
-          </button>
-          <select id="step" class="border rounded p-2">
-            <option value="day">День</option>
-            <option value="week">Неделя</option>
-            <option value="month">Месяц</option>
-          </select>
-          <button
-            class="px-3 py-1 bg-blue-600 text-white rounded"
-            onclick="renderTopChart()"
-          >
-            Показать
-          </button>
-          <button
-            class="px-3 py-1 bg-purple-600 text-white rounded"
-            onclick="exportCurrent()"
-          >
-            Экспорт
-          </button>
-        </div>
-        <!-- График -->
-        <div class="h-[300px]">
-          <canvas id="topChart"></canvas>
-        </div>
-      </div>
-    </div>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Victor Khristoforov — Fullstack & AI Engineer</title>
+<meta name="description" content="Fullstack engineer building with LLMs and coding agents. TypeScript, Node.js, Vue, React, PHP. Almaty, Kazakhstan — remote.">
+<meta property="og:title" content="Victor Khristoforov — Fullstack & AI Engineer">
+<meta property="og:description" content="Fullstack engineer building with LLMs and coding agents. 900+ websites shipped through a platform I built alone.">
+<style>
+:root{--bg:#fbfbf9;--fg:#1b1b1a;--muted:#6a6a66;--line:#e4e3de;--card:#fff;--accent:#2f6f4f;--accent-bg:#e8f2ec}
+@media (prefers-color-scheme:dark){:root{--bg:#141413;--fg:#ececea;--muted:#9a9a95;--line:#2b2b29;--card:#1b1b1a;--accent:#7cc59d;--accent-bg:#1d2a22}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif}
+main{max-width:860px;margin:0 auto;padding:56px 20px 80px}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+h1{font-size:40px;line-height:1.15;margin:0 0 6px;letter-spacing:-.02em}
+h2{font-size:13px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin:56px 0 18px;font-weight:600}
+h3{font-size:18px;margin:0}
+.role{font-size:20px;color:var(--muted);margin:0 0 18px}
+.links{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:15px}
+.lead{font-size:18px;margin:28px 0 0;max-width:720px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:32px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.stat b{display:block;font-size:26px;letter-spacing:-.01em}
+.stat span{font-size:13px;color:var(--muted);line-height:1.35;display:block}
+.steps{counter-reset:s;list-style:none;padding:0;margin:0;display:grid;gap:10px}
+.steps li{counter-increment:s;padding-left:38px;position:relative}
+.steps li::before{content:counter(s);position:absolute;left:0;top:1px;width:24px;height:24px;border-radius:50%;background:var(--accent-bg);color:var(--accent);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.projects{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 18px 16px;display:flex;flex-direction:column}
+.card p{margin:8px 0 12px;font-size:15px}
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:auto}
+.tag{font-size:12px;background:var(--accent-bg);color:var(--accent);border-radius:999px;padding:2px 9px}
+.job{display:grid;grid-template-columns:170px 1fr;gap:6px 20px;padding:16px 0;border-top:1px solid var(--line)}
+.job:first-of-type{border-top:0}
+.when{color:var(--muted);font-size:14px;padding-top:2px}
+.job p{margin:6px 0 0;font-size:15px}
+.job .co{color:var(--muted);font-weight:400}
+.skills{display:grid;grid-template-columns:150px 1fr;gap:8px 20px;font-size:15px}
+.skills dt{color:var(--muted)}.skills dd{margin:0}
+footer{margin-top:56px;font-size:13px;color:var(--muted)}
+@media (max-width:640px){h1{font-size:32px}.stats{grid-template-columns:1fr 1fr}.projects{grid-template-columns:1fr}.job,.skills{grid-template-columns:1fr}.when{padding:0}}
+@media print{body{background:#fff;color:#000}main{padding:0}h2{margin-top:28px}.card,.stat{border-color:#ccc}}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>Victor Khristoforov</h1>
+  <p class="role">Fullstack &amp; AI Engineer · TypeScript, Node.js, Vue, React, PHP</p>
+  <div class="links">
+    <span>Almaty, Kazakhstan · open to remote</span>
+    <a href="mailto:victor.khrist@gmail.com">victor.khrist@gmail.com</a>
+    <a href="https://t.me/victorkhrist">Telegram</a>
+    <a href="https://github.com/ShaggyWizard">GitHub</a>
+    <a href="https://www.linkedin.com/in/victor-khristoforov-011b4012b">LinkedIn</a>
+  </div>
+  <p class="lead">Software developer since 2019: web platforms, internal tools and shipped games. For the last two years I have built products with LLMs inside them and worked with coding agents every day — I own the plan, the architecture and the review; agents write most of the code.</p>
+  <div class="stats">
+    <div class="stat"><b>900+</b><span>websites shipped through a platform I built alone</span></div>
+    <div class="stat"><b>20 min</b><span>to launch a new site instead of a full day</span></div>
+    <div class="stat"><b>84,000+</b><span>links under monitoring with queues and rate limits</span></div>
+    <div class="stat"><b>5</b><span>HTML5 games released on Yandex Games</span></div>
+  </div>
+</header>
 
-    <!-- Контент -->
-    <div class="max-w-7xl mx-auto p-6 space-y-6">
-      <!-- Факт -->
-      <div class="bg-white shadow rounded p-6">
-        <h2 class="text-xl font-semibold mb-4">Фактические операции</h2>
-        <form id="factForm" class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
-          <input type="date" id="factDate" class="border rounded p-2 w-full" />
-          <input
-            type="text"
-            id="factDesc"
-            placeholder="Описание"
-            class="border rounded p-2 w-full"
-            required
-          />
-          <input
-            type="number"
-            id="factAmount"
-            placeholder="Сумма"
-            class="border rounded p-2 w-full"
-            required
-            step="0.01"
-          />
-          <select id="factType" class="border rounded p-2 w-full">
-            <option value="income">Доход</option>
-            <option value="expense">Расход</option>
-          </select>
-          <button
-            type="submit"
-            class="bg-blue-600 text-white rounded p-2 hover:bg-blue-700"
-          >
-            Добавить
-          </button>
-        </form>
-        <table class="min-w-full border text-sm">
-          <thead class="bg-gray-100">
-            <tr>
-              <th class="p-2">Дата</th>
-              <th class="p-2">Описание</th>
-              <th class="p-2">Сумма</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="factTable"></tbody>
-        </table>
-      </div>
+<section>
+  <h2>How I work with AI</h2>
+  <ol class="steps">
+    <li><b>Plan it myself.</b> I break the task down, choose the stack and architecture, and resolve open questions before any code is written.</li>
+    <li><b>Small tasks.</b> Models get lost on large scopes, so I split work into small specs and hand them to Claude Code agents, in parallel where possible.</li>
+    <li><b>Three review passes.</b> Cross-model review (Codex, Gemini, DeepSeek) plus a security audit, then automated tests with known-good and known-bad cases, then I read the diff — carefully wherever money or access is involved.</li>
+    <li><b>Reusable tooling.</b> Project instructions, custom skills and MCP servers for the work that repeats.</li>
+  </ol>
+</section>
 
-      <!-- План -->
-      <div class="bg-white shadow rounded p-6">
-        <h2 class="text-xl font-semibold mb-4">Планируемые операции</h2>
-        <form id="planForm" class="grid grid-cols-2 md:grid-cols-7 gap-3 mb-4">
-          <input type="date" id="planDate" class="border rounded p-2 w-full" />
-          <input
-            type="text"
-            id="planDesc"
-            placeholder="Описание"
-            class="border rounded p-2 w-full"
-            required
-          />
-          <input
-            type="number"
-            id="planAmount"
-            placeholder="Сумма"
-            class="border rounded p-2 w-full"
-            required
-            step="0.01"
-          />
-          <select id="planType" class="border rounded p-2 w-full">
-            <option value="income">Доход</option>
-            <option value="expense">Расход</option>
-          </select>
-          <select id="planRepeat" class="border rounded p-2 w-full">
-            <option value="once">Разовый</option>
-            <option value="regular">Регулярный</option>
-          </select>
-          <input
-            type="date"
-            id="planStart"
-            class="border rounded p-2 w-full"
-            placeholder="Начало"
-          />
-          <input
-            type="date"
-            id="planEnd"
-            class="border rounded p-2 w-full"
-            placeholder="Конец"
-          />
-          <button
-            type="submit"
-            class="bg-green-600 text-white rounded p-2 hover:bg-green-700 col-span-2 md:col-span-7"
-          >
-            Добавить
-          </button>
-        </form>
-        <table class="min-w-full border text-sm">
-          <thead class="bg-gray-100">
-            <tr>
-              <th class="p-2">Дата/Период</th>
-              <th class="p-2">Описание</th>
-              <th class="p-2">Сумма</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="planTable"></tbody>
-        </table>
-      </div>
-    </div>
+<section>
+  <h2>Selected projects</h2>
+  <div class="projects">
+    <article class="card">
+      <h3><a href="https://github.com/ShaggyWizard/marketplace-review-panel">marketplace-review-panel</a></h3>
+      <p>Reviews 2–3k microtask reports a day for marketplace promotion: rules first, a Claude vision agent on contact sheets of 12 screenshots, a human only for disputed cases. On the demo set: 88% decided without a human, 0 honest reports rejected, 12 of 12 planted fakes caught. <a href="https://zgxd.ru/test/unu-panel/">Live demo</a>.</p>
+      <div class="tags"><span class="tag">Python</span><span class="tag">FastAPI</span><span class="tag">SQLite</span><span class="tag">Claude Vision</span><span class="tag">Chart.js</span></div>
+    </article>
+    <article class="card">
+      <h3><a href="https://github.com/ShaggyWizard/megablock-agentic-tooling">megablock-agentic-tooling</a></h3>
+      <p>Spec-driven agentic workflow for a Unity 6 survival game: an implementer agent writes C# from specs, judges on a different model accept or return the work. Batch-mode automation, mutation testing with hash-verified rollback, a browser floor-plan editor. One change: PASS 38/38, 15 of 15 mutations caught.</p>
+      <div class="tags"><span class="tag">Claude Code</span><span class="tag">Unity</span><span class="tag">C#</span><span class="tag">Bash</span><span class="tag">OpenSpec</span></div>
+    </article>
+    <article class="card">
+      <h3><a href="https://github.com/ShaggyWizard/test-product-import">test-product-import</a></h3>
+      <p>Async product import from Excel: file → RabbitMQ → worker, bad rows reported without stopping the import, idempotent re-import. Angular + NgRx frontend with server-side pagination, JWT, Swagger. 52 PHPUnit tests, 6 Playwright e2e, PHPStan level 8, CI.</p>
+      <div class="tags"><span class="tag">PHP</span><span class="tag">Slim</span><span class="tag">Doctrine</span><span class="tag">RabbitMQ</span><span class="tag">Angular</span><span class="tag">Docker</span></div>
+    </article>
+    <article class="card">
+      <h3><a href="https://github.com/ShaggyWizard/keitaro-wrapper">keitaro-wrapper</a></h3>
+      <p>Campaign editor on top of the Keitaro ad tracker API: geo-split campaigns, offer shares recalculated on add, pin and remove, draft changes with push and rollback, archive of offers deleted upstream.</p>
+      <div class="tags"><span class="tag">Python</span><span class="tag">FastAPI</span><span class="tag">SQLAlchemy</span><span class="tag">Alembic</span><span class="tag">JavaScript</span></div>
+    </article>
+  </div>
+</section>
 
-    <script>
-      function normalizeData(d) {
-        if (!d || typeof d !== "object") d = {};
-        if (!Array.isArray(d.fact)) d.fact = [];
-        if (!Array.isArray(d.plan)) d.plan = [];
-        return d;
-      }
-      let data = normalizeData(
-        JSON.parse(localStorage.getItem("budgetData") || "{}")
-      );
-      function saveData() {
-        localStorage.setItem("budgetData", JSON.stringify(data));
-        renderAll();
-      }
+<section>
+  <h2>Experience</h2>
+  <div class="job">
+    <div class="when">Aug 2025 – Oct 2026</div>
+    <div><h3>Fullstack Developer <span class="co">· Wellbets</span></h3>
+    <p>Built alone an internal platform for website generation and monitoring (Node.js, Express, Vue, SQLite), 308 commits in 6 months. LLM content generated per template block with format validation and automatic regeneration of rejects. Integrations with Google Search Console, Bing, IndexNow, Cloudflare (63 accounts) and Ahrefs. Fixed out-of-memory crashes by limiting parallel builds; automated tests for core modules. Support automation on the ChatGPT API with answer moderation.</p></div>
+  </div>
+  <div class="job">
+    <div class="when">Apr 2025 – Jun 2025</div>
+    <div><h3>PHP Developer <span class="co">· Klienty iz Interneta</span></h3>
+    <p>PHP and Laravel, legacy websites in a restricted environment: log and code investigation, fixes.</p></div>
+  </div>
+  <div class="job">
+    <div class="when">Feb 2023 – Mar 2025</div>
+    <div><h3>Fullstack Developer <span class="co">· Smartunit</span></h3>
+    <p>React and WordPress websites; interfaces from Figma with React and Tailwind CSS. PHP hooks and plugins, parsers, product imports, data migrations, SQL and cron jobs.</p></div>
+  </div>
+  <div class="job">
+    <div class="when">Jul 2022 – Feb 2023</div>
+    <div><h3>Unity Developer <span class="co">· Whalebox Studio</span></h3>
+    <p>Core mechanics of a browser multiplayer shooter in Unity/C#; ported it to WebGL, Three.js and Node.js with multiplayer.</p></div>
+  </div>
+  <div class="job">
+    <div class="when">Apr 2019 – Jun 2022</div>
+    <div><h3>C++ Developer <span class="co">· MyTona</span></h3>
+    <p>Gameplay features and content for the mobile game Cooking Diary on an in-house C++ engine. Internal Unity/C# and Python tool for the content pipeline; Google Sheets automation for game designers.</p></div>
+  </div>
+  <div class="job">
+    <div class="when">Since Jul 2023</div>
+    <div><h3>Independent games</h3>
+    <p>Five HTML5 games on Yandex Games, built with Claude Code: platform SDK, in-app purchases, leaderboards, remote config, ru/en/ja localization, iOS Safari support. Economy, progression and monetization designed and tuned on live numbers. <a href="https://yandex.ru/games/app/simuliator-molitv-212964">Example</a>.</p></div>
+  </div>
+</section>
 
-      function toISO(d) {
-        const y = d.getFullYear();
-        const m = String(d.getMonth() + 1).padStart(2, "0");
-        const dd = String(d.getDate()).padStart(2, "0");
-        return `${y}-${m}-${dd}`;
-      }
-      const TODAY = toISO(new Date());
-      document.addEventListener("DOMContentLoaded", () => {
-        document.getElementById("factDate").setAttribute("max", TODAY);
-      });
+<section>
+  <h2>Skills</h2>
+  <dl class="skills">
+    <dt>AI</dt><dd>Claude Code, sub-agents, skills, MCP servers, Codex, Gemini, LLM APIs (Anthropic, OpenAI), vision checks, cross-model review</dd>
+    <dt>Frontend</dt><dd>TypeScript, JavaScript, Vue, React, HTML/CSS, Tailwind, Canvas, Three.js</dd>
+    <dt>Backend</dt><dd>Node.js, Express, PHP, Laravel, WordPress, Python (FastAPI), REST APIs, task queues</dd>
+    <dt>Data &amp; ops</dt><dd>SQL, MySQL, PostgreSQL, SQLite, Git, Docker Compose, Cloudflare, Linux servers</dd>
+    <dt>Games</dt><dd>C++, C#, Unity</dd>
+    <dt>Education</dt><dd>North-Eastern Federal University — Computer Science and Engineering, 2021</dd>
+    <dt>Languages</dt><dd>Russian — native, English — B2</dd>
+  </dl>
+</section>
 
-      /* Факт */
-      factForm.onsubmit = (e) => {
-        e.preventDefault();
-        const chosen = factDate.value;
-        const dateVal = chosen ? chosen : TODAY;
-        if (chosen && chosen > TODAY) {
-          alert("Нельзя будущую дату.");
-          return;
-        }
-        data.fact.push({
-          date: dateVal,
-          desc: factDesc.value,
-          amount: parseFloat(factAmount.value).toFixed(2) * 1,
-          type: factType.value,
-        });
-        saveData();
-        e.target.reset();
-      };
-
-      /* План */
-      planForm.onsubmit = (e) => {
-        e.preventDefault();
-        data.plan.push({
-          date: planDate.value,
-          desc: planDesc.value,
-          amount: parseFloat(planAmount.value).toFixed(2) * 1,
-          type: planType.value,
-          repeat: planRepeat.value,
-          start: planStart.value || null,
-          end: planEnd.value || null,
-          confirmed: false,
-          confirmedMonths: [],
-        });
-        saveData();
-        e.target.reset();
-      };
-
-      function confirmPlanOp(index) {
-        const op = data.plan[index];
-        let fdate = prompt("Дата факта (YYYY-MM-DD):", TODAY);
-        if (!fdate) return;
-        if (fdate > TODAY) {
-          alert("Нельзя будущую дату.");
-          return;
-        }
-        const famount = parseFloat(prompt("Сумма:", op.amount));
-        if (isNaN(famount)) return;
-        data.fact.push({
-          date: fdate,
-          desc: op.desc,
-          amount: famount,
-          type: op.type,
-        });
-        if (op.repeat === "once") {
-          op.confirmed = true;
-        } else {
-          const ym = fdate.slice(0, 7);
-          if (!op.confirmedMonths) op.confirmedMonths = [];
-          if (!op.confirmedMonths.includes(ym)) op.confirmedMonths.push(ym);
-        }
-        saveData();
-      }
-
-      function getBalanceSeries(start, end, step) {
-        const startDate = new Date(
-          start.getFullYear(),
-          start.getMonth(),
-          start.getDate()
-        );
-        const endDate = new Date(
-          end.getFullYear(),
-          end.getMonth(),
-          end.getDate()
-        );
-        const endISO = toISO(endDate);
-        const todayISO = TODAY;
-        const labels = [],
-          actual = [],
-          future = [];
-        let balFact = 0,
-          balPlan = 0,
-          idx = 0;
-
-        // стартовый баланс
-        data.fact.forEach((op) => {
-          if (op.date < toISO(startDate) && op.date <= todayISO) {
-            balFact += op.type === "income" ? op.amount : -op.amount;
-          }
-        });
-        data.plan.forEach((op) => {
-          if (op.repeat === "once") {
-            if (op.date < toISO(startDate) && !op.confirmed) {
-              balPlan += op.type === "income" ? op.amount : -op.amount;
-            }
-          }
-          if (op.repeat === "regular") {
-            const dayNum = parseInt(op.date.slice(8, 10), 10);
-            for (
-              let d = new Date(op.start || startDate);
-              d < startDate && (!op.end || d <= new Date(op.end));
-              d.setMonth(d.getMonth() + 1)
-            ) {
-              const ds = toISO(new Date(d.getFullYear(), d.getMonth(), dayNum));
-              const ym = ds.slice(0, 7);
-              if (
-                ds < toISO(startDate) &&
-                (!op.confirmedMonths || !op.confirmedMonths.includes(ym))
-              ) {
-                balPlan += op.type === "income" ? op.amount : -op.amount;
-              }
-            }
-          }
-        });
-
-        const isWeekBoundary = () => idx % 7 === 6;
-        const isMonthBoundary = (cur) => {
-          const n = new Date(cur);
-          n.setDate(cur.getDate() + 1);
-          return cur.getMonth() !== n.getMonth();
-        };
-
-        for (
-          let cur = new Date(startDate);
-          cur <= endDate;
-          cur.setDate(cur.getDate() + 1), idx++
-        ) {
-          const ds = toISO(cur);
-          let deltaFact = 0;
-          data.fact.forEach((op) => {
-            if (op.date === ds && op.date <= todayISO) {
-              deltaFact += op.type === "income" ? op.amount : -op.amount;
-            }
-          });
-          balFact += deltaFact;
-
-          let deltaPlan = 0;
-          data.plan.forEach((op) => {
-            if (op.repeat === "once" && op.date === ds && !op.confirmed) {
-              deltaPlan += op.type === "income" ? op.amount : -op.amount;
-            }
-            if (op.repeat === "regular") {
-              const dayNum = parseInt(op.date.slice(8, 10), 10);
-              const inRange =
-                (!op.start || ds >= op.start) && (!op.end || ds <= op.end);
-              const confirmedMonths = op.confirmedMonths || [];
-              const ym = ds.slice(0, 7);
-              if (
-                inRange &&
-                cur.getDate() === dayNum &&
-                !confirmedMonths.includes(ym)
-              ) {
-                deltaPlan += op.type === "income" ? op.amount : -op.amount;
-              }
-            }
-          });
-          balPlan += deltaPlan;
-
-          let write = false;
-          if (step === "day") write = true;
-          else if (step === "week") write = isWeekBoundary() || ds === endISO;
-          else if (step === "month")
-            write = isMonthBoundary(cur) || ds === endISO;
-
-          if (write) {
-            labels.push(ds);
-            actual.push(balFact);
-            future.push(balFact + balPlan);
-          }
-        }
-        return { labels, actual, future };
-      }
-
-      function renderTables() {
-        factTable.innerHTML = "";
-        data.fact.forEach((op, i) => {
-          const sign = op.type === "income" ? "+" : "−";
-          const cls = op.type === "income" ? "text-green-600" : "text-red-600";
-          factTable.innerHTML += `<tr><td class="p-2">${
-            op.date
-          }</td><td class="p-2">${
-            op.desc
-          }</td><td class="p-2 ${cls}">${sign}${op.amount.toFixed(
-            2
-          )}</td><td><button class="text-red-600" onclick="data.fact.splice(${i},1);saveData()">✕</button></td></tr>`;
-        });
-
-        planTable.innerHTML = "";
-        data.plan.forEach((op, i) => {
-          const when =
-            op.repeat === "regular"
-              ? `${op.start || "∞"}..${op.end || "∞"}`
-              : op.date;
-          const confirmedTxt = op.repeat === "once" && op.confirmed ? "✓" : "";
-          const sign = op.type === "income" ? "+" : "−";
-          const cls = op.type === "income" ? "text-green-600" : "text-red-600";
-          planTable.innerHTML += `<tr><td class="p-2">${when}</td><td class="p-2">${
-            op.desc
-          }</td><td class="p-2 ${cls}">${sign}${op.amount.toFixed(
-            2
-          )}</td><td class="p-2 flex gap-2">${
-            confirmedTxt ||
-            `<button class="text-green-600" onclick="confirmPlanOp(${i})">Подтвердить</button>`
-          }<button class="text-red-600" onclick="data.plan.splice(${i},1);saveData()">Удалить</button></td></tr>`;
-        });
-      }
-
-      let topChart;
-      function renderTopChart() {
-        const ctx = document.getElementById("topChart");
-        if (topChart instanceof Chart) topChart.destroy();
-        const start = new Date(rangeStart.value || new Date());
-        const end = new Date(rangeEnd.value || new Date());
-        const step = document.getElementById("step").value || "day";
-        const s = getBalanceSeries(start, end, step);
-        topChart = new Chart(ctx, {
-          type: "line",
-          data: {
-            labels: s.labels,
-            datasets: [
-              { label: "Факт", data: s.actual, borderColor: "blue" },
-              {
-                label: "Прогноз",
-                data: s.future,
-                borderColor: "orange",
-                borderDash: [5, 5],
-              },
-            ],
-          },
-          options: { maintainAspectRatio: false },
-        });
-      }
-
-      function setRange(type) {
-        const d = new Date();
-        const start = new Date(d),
-          end = new Date(d);
-        if (type === "week") end.setDate(d.getDate() + 7);
-        if (type === "month") end.setMonth(d.getMonth() + 1);
-        if (type === "3m") end.setMonth(d.getMonth() + 3);
-        if (type === "year") end.setFullYear(d.getFullYear() + 1);
-        rangeStart.value = toISO(start);
-        rangeEnd.value = toISO(end);
-      }
-
-      function exportCurrent() {
-        const start = new Date(rangeStart.value || new Date());
-        const end = new Date(rangeEnd.value || new Date());
-        const todayISO = TODAY;
-        const rows = [];
-        let balFact = 0,
-          balPlan = 0;
-
-        // стартовый баланс
-        data.fact.forEach((op) => {
-          if (op.date < toISO(start) && op.date <= todayISO) {
-            balFact += op.type === "income" ? op.amount : -op.amount;
-          }
-        });
-        data.plan.forEach((op) => {
-          if (op.repeat === "once") {
-            if (op.date < toISO(start) && !op.confirmed) {
-              balPlan += op.type === "income" ? op.amount : -op.amount;
-            }
-          }
-          if (op.repeat === "regular") {
-            const dayNum = parseInt(op.date.slice(8, 10), 10);
-            for (
-              let d = new Date(op.start || start);
-              d < start && (!op.end || d <= new Date(op.end));
-              d.setMonth(d.getMonth() + 1)
-            ) {
-              const ds = toISO(new Date(d.getFullYear(), d.getMonth(), dayNum));
-              const ym = ds.slice(0, 7);
-              if (
-                ds < toISO(start) &&
-                (!op.confirmedMonths || !op.confirmedMonths.includes(ym))
-              ) {
-                balPlan += op.type === "income" ? op.amount : -op.amount;
-              }
-            }
-          }
-        });
-
-        for (
-          let cur = new Date(start);
-          cur <= end;
-          cur.setDate(cur.getDate() + 1)
-        ) {
-          const ds = toISO(cur);
-          const opsFact = [],
-            opsPlan = [];
-          data.fact.forEach((op) => {
-            if (op.date === ds && op.date <= todayISO) {
-              const delta = op.type === "income" ? op.amount : -op.amount;
-              balFact += delta;
-              opsFact.push({ type: op.type, desc: op.desc, amount: op.amount });
-            }
-          });
-          data.plan.forEach((op) => {
-            if (op.repeat === "once" && op.date === ds && !op.confirmed) {
-              const delta = op.type === "income" ? op.amount : -op.amount;
-              balPlan += delta;
-              opsPlan.push({ type: op.type, desc: op.desc, amount: op.amount });
-            }
-            if (op.repeat === "regular") {
-              const dayNum = parseInt(op.date.slice(8, 10), 10);
-              const inRange =
-                (!op.start || ds >= op.start) && (!op.end || ds <= op.end);
-              const confirmedMonths = op.confirmedMonths || [];
-              const ym = ds.slice(0, 7);
-              if (
-                inRange &&
-                cur.getDate() === dayNum &&
-                !confirmedMonths.includes(ym)
-              ) {
-                const delta = op.type === "income" ? op.amount : -op.amount;
-                balPlan += delta;
-                opsPlan.push({
-                  type: op.type,
-                  desc: op.desc,
-                  amount: op.amount,
-                });
-              }
-            }
-          });
-          rows.push({
-            date: ds,
-            balance_fact: balFact,
-            balance_future: balFact + balPlan,
-            operations: { fact: opsFact, plan: opsPlan },
-          });
-        }
-        const blob = new Blob([JSON.stringify(rows, null, 2)], {
-          type: "application/json",
-        });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "budget_export.json";
-        a.click();
-        URL.revokeObjectURL(url);
-      }
-
-      function renderAll() {
-        renderTables();
-        renderTopChart();
-      }
-      setRange("month");
-      renderAll();
-    </script>
-  </body>
+<footer>Updated November 2026 · <a href="https://github.com/ShaggyWizard/shaggywizard.github.io">source</a></footer>
+</main>
+</body>
 </html>
